@@ -24,6 +24,12 @@ pub static SIN: [i16; 256] = [
     -9511, -8739, -7961, -7179, -6392, -5601, -4807, -4011, -3211, -2410, -1607, -804,
 ];
 
+pub enum Action {
+    Vol(u8),
+    Start(u16),
+    Stop,
+}
+
 pub struct Oscilator {
     pub sample: &'static [i16; 256],
     pub vol: u8,
@@ -34,19 +40,6 @@ pub struct Oscilator {
     cur_mod: u32,
 }
 impl Oscilator {
-    pub fn new(freq: u16) -> Self {
-        let mut res = Self {
-            sample: &SIN,
-            freq: 0,
-            vol: 255,
-            step: 0,
-            modulo: 0,
-            cur_idx: 0,
-            cur_mod: 0,
-        };
-        res.set_freq(freq);
-        res
-    }
     pub fn freq(&self) -> u16 {
         self.freq
     }
@@ -60,5 +53,31 @@ impl Oscilator {
         self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
         self.cur_mod = self.cur_mod % RATE + self.modulo;
         res as i16
+    }
+    pub fn stop(&mut self) {
+        self.step = 0;
+        self.modulo = 0;
+        self.cur_idx = 0;
+        self.cur_mod = 0;
+    }
+    pub fn modify(&mut self, action: &Action) {
+        match action {
+            Action::Vol(vol) => self.vol = *vol,
+            Action::Start(freq) => self.set_freq(*freq),
+            Action::Stop => self.stop(),
+        }
+    }
+}
+impl Default for Oscilator {
+    fn default() -> Self {
+        Self {
+            sample: &SIN,
+            freq: 0,
+            vol: 255,
+            step: 0,
+            modulo: 0,
+            cur_idx: 0,
+            cur_mod: 0,
+        }
     }
 }
