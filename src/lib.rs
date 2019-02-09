@@ -1,8 +1,7 @@
-pub const RATE: u32 = 48000;
-pub const SAMPLE_SIZE: usize = 256;
-pub const MAX_VOL: u8 = core::u8::MAX;
+#![no_std]
 
-pub static SIN: [i16; SAMPLE_SIZE] = [
+pub const RATE: u32 = 48000;
+pub static SIN: [i16; 256] = [
     0, 804, 1607, 2410, 3211, 4011, 4807, 5601, 6392, 7179, 7961, 8739, 9511, 10278, 11038, 11792,
     12539, 13278, 14009, 14732, 15446, 16150, 16845, 17530, 18204, 18867, 19519, 20159, 20787,
     21402, 22004, 22594, 23169, 23731, 24278, 24811, 25329, 25831, 26318, 26789, 27244, 27683,
@@ -26,7 +25,7 @@ pub static SIN: [i16; SAMPLE_SIZE] = [
 ];
 
 pub struct Oscilator {
-    pub sample: &'static [i16; SAMPLE_SIZE],
+    pub sample: &'static [i16; 256],
     pub vol: u8,
     freq: u16,
     step: u8,
@@ -39,7 +38,7 @@ impl Oscilator {
         let mut res = Self {
             sample: &SIN,
             freq: 0,
-            vol: MAX_VOL,
+            vol: 255,
             step: 0,
             modulo: 0,
             cur_idx: 0,
@@ -53,11 +52,11 @@ impl Oscilator {
     }
     pub fn set_freq(&mut self, freq: u16) {
         self.freq = freq;
-        self.step = ((SAMPLE_SIZE as u32 * freq as u32 / RATE) % SAMPLE_SIZE as u32) as u8;
-        self.modulo = SAMPLE_SIZE as u32 * freq as u32 % RATE;
+        self.step = (256 * freq as u32 / RATE) as u8;
+        self.modulo = 256 * freq as u32 % RATE;
     }
     pub fn step(&mut self) -> i16 {
-        let res = self.sample[self.cur_idx as usize] as i32 * self.vol as i32 / MAX_VOL as i32;
+        let res = self.sample[self.cur_idx as usize] as i32 * self.vol as i32 / 255;
         self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
         self.cur_mod = self.cur_mod % RATE + self.modulo;
         res as i16
