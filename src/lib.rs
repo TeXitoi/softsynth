@@ -52,7 +52,7 @@ impl Oscilator {
         let res = self.sample[self.cur_idx as usize] as i32 * self.vol as i32 / 255;
         self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
         self.cur_mod = self.cur_mod % RATE + self.modulo;
-        res as i16
+        (res * self.vol as i32 / 255) as i16
     }
     pub fn stop(&mut self) {
         self.step = 0;

@@ -11,42 +11,42 @@ static EVENTS: [Event; 12] = [
     Event {
         ms: 0,
         chan: 0,
-        action: Action::Vol(255 / 4),
+        action: Action::Vol(100),
     },
     Event {
         ms: 0,
         chan: 1,
-        action: Action::Vol(255 / 4),
+        action: Action::Vol(100 / 3),
     },
     Event {
         ms: 0,
         chan: 2,
-        action: Action::Vol(255 / 4),
+        action: Action::Vol(100 / 5),
     },
     Event {
         ms: 0,
         chan: 3,
-        action: Action::Vol(255 / 4),
+        action: Action::Vol(100 / 7),
     },
     Event {
         ms: 0,
         chan: 0,
-        action: Action::Start(523),
+        action: Action::Start(440),
     },
     Event {
-        ms: 2_000,
+        ms: 2000,
         chan: 1,
-        action: Action::Start(659),
+        action: Action::Start(440 * 3),
     },
     Event {
-        ms: 4_000,
+        ms: 4000,
         chan: 2,
-        action: Action::Start(784),
+        action: Action::Start(440 * 5),
     },
     Event {
-        ms: 6_000,
+        ms: 6000,
         chan: 3,
-        action: Action::Start(932),
+        action: Action::Start(440 * 7),
     },
     Event {
         ms: 10_000,
