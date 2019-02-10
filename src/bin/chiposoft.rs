@@ -1,5 +1,5 @@
 use byteorder::{WriteBytesExt, LE};
-use chiposoft::{Oscilator, RATE, Action};
+use chiposoft::{Action, Oscilator, RATE};
 use std::io::Write;
 
 struct Event {
@@ -8,18 +8,66 @@ struct Event {
     action: Action,
 }
 static EVENTS: [Event; 12] = [
-    Event { ms: 0, chan: 0, action: Action::Vol(255 / 4) },
-    Event { ms: 0, chan: 1, action: Action::Vol(255 / 4) },
-    Event { ms: 0, chan: 2, action: Action::Vol(255 / 4) },
-    Event { ms: 0, chan: 3, action: Action::Vol(255 / 4) },
-    Event { ms: 0, chan: 0, action: Action::Start(523) },
-    Event { ms: 2_000, chan: 1, action: Action::Start(659) },
-    Event { ms: 4_000, chan: 2, action: Action::Start(784) },
-    Event { ms: 6_000, chan: 3, action: Action::Start(932) },
-    Event { ms: 10_000, chan: 0, action: Action::Stop },
-    Event { ms: 10_000, chan: 1, action: Action::Stop },
-    Event { ms: 10_000, chan: 2, action: Action::Stop },
-    Event { ms: 10_000, chan: 3, action: Action::Stop },
+    Event {
+        ms: 0,
+        chan: 0,
+        action: Action::Vol(255 / 4),
+    },
+    Event {
+        ms: 0,
+        chan: 1,
+        action: Action::Vol(255 / 4),
+    },
+    Event {
+        ms: 0,
+        chan: 2,
+        action: Action::Vol(255 / 4),
+    },
+    Event {
+        ms: 0,
+        chan: 3,
+        action: Action::Vol(255 / 4),
+    },
+    Event {
+        ms: 0,
+        chan: 0,
+        action: Action::Start(523),
+    },
+    Event {
+        ms: 2_000,
+        chan: 1,
+        action: Action::Start(659),
+    },
+    Event {
+        ms: 4_000,
+        chan: 2,
+        action: Action::Start(784),
+    },
+    Event {
+        ms: 6_000,
+        chan: 3,
+        action: Action::Start(932),
+    },
+    Event {
+        ms: 10_000,
+        chan: 0,
+        action: Action::Stop,
+    },
+    Event {
+        ms: 10_000,
+        chan: 1,
+        action: Action::Stop,
+    },
+    Event {
+        ms: 10_000,
+        chan: 2,
+        action: Action::Stop,
+    },
+    Event {
+        ms: 10_000,
+        chan: 3,
+        action: Action::Stop,
+    },
 ];
 
 fn make(song: &[Event]) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
