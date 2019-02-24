@@ -5,9 +5,15 @@ rust:
  - beta
  - nightly
 env: RUN=BUILD
+before_script: rustup target add thumbv7m-none-eabi
+script:
+ - cargo test
+ - cd bluepill-player && cargo build --release
 matrix:
   include:
     - rust: stable
       env: RUN=FMT
       before_script: rustup component add rustfmt-preview
-      script: cargo fmt --all -- --check
+      script:
+      - cargo fmt --all -- --check
+      - cd bluepill-player && cargo fmt --all -- --check

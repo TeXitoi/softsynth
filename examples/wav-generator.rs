@@ -1,5 +1,5 @@
 use byteorder::{WriteBytesExt, LE};
-use chiposoft::{Action, Oscilator, RATE};
+use softsynth::{Action, Oscillator, RATE};
 use std::io::Write;
 
 struct Event {
@@ -71,11 +71,11 @@ static EVENTS: [Event; 12] = [
 ];
 
 fn make(song: &[Event]) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
-    let mut oscilators = [
-        Oscilator::default(),
-        Oscilator::default(),
-        Oscilator::default(),
-        Oscilator::default(),
+    let mut oscillators = [
+        Oscillator::default(),
+        Oscillator::default(),
+        Oscillator::default(),
+        Oscillator::default(),
     ];
     let duration = song.iter().map(|e| e.ms).max().unwrap_or(0);
     let mut events = song.iter();
@@ -87,13 +87,13 @@ fn make(song: &[Event]) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
                 match event {
                     None => break,
                     Some(e) if e.ms != ms => break,
-                    Some(e) => oscilators[e.chan].modify(&e.action),
+                    Some(e) => oscillators[e.chan].modify(&e.action),
                 }
                 event = events.next();
             }
             ms += 1;
         }
-        let mut res = oscilators.iter_mut().map(|o| o.step() as i32).sum();
+        let mut res = oscillators.iter_mut().map(|o| o.step() as i32).sum();
         if res > core::i16::MAX as i32 {
             res = core::i16::MAX as i32;
         } else if res < core::i16::MIN as i32 {

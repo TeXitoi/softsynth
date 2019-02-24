@@ -1,8 +1,8 @@
 [package]
-name = "chiposoft"
+name = "softsynth"
 version = "0.1.0"
 authors = ["Guillaume Pinot <texitoi@texitoi.eu>"]
 edition = "2018"
 
-[dependencies]
+[dev-dependencies]
 byteorder = "1"

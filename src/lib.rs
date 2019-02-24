@@ -30,7 +30,7 @@ pub enum Action {
     Stop,
 }
 
-pub struct Oscilator {
+pub struct Oscillator {
     pub sample: &'static [i16; 256],
     pub vol: u8,
     freq: u16,
@@ -39,7 +39,7 @@ pub struct Oscilator {
     cur_idx: u8,
     cur_mod: u32,
 }
-impl Oscilator {
+impl Oscillator {
     pub fn freq(&self) -> u16 {
         self.freq
     }
@@ -48,11 +48,18 @@ impl Oscilator {
         self.step = (256 * freq as u32 / RATE) as u8;
         self.modulo = 256 * freq as u32 % RATE;
     }
-    pub fn step(&mut self) -> i16 {
+    pub fn get(&self) -> i16 {
         let res = self.sample[self.cur_idx as usize] as i32 * self.vol as i32 / 255;
+        (res * self.vol as i32 / 255) as i16
+    }
+    pub fn advance(&mut self) {
         self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
         self.cur_mod = self.cur_mod % RATE + self.modulo;
-        (res * self.vol as i32 / 255) as i16
+    }
+    pub fn step(&mut self) -> i16 {
+        let res = self.get();
+        self.advance();
+        res
     }
     pub fn stop(&mut self) {
         self.step = 0;
@@ -68,7 +75,7 @@ impl Oscilator {
         }
     }
 }
-impl Default for Oscilator {
+impl Default for Oscillator {
     fn default() -> Self {
         Self {
             sample: &SIN,
