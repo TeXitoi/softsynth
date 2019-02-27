@@ -7,7 +7,7 @@ use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::{entry, exception};
 use softsynth::{Oscillator, RATE};
 use stm32f1xx_hal::prelude::*;
-use stm32f1xx_hal::{pwm, stm32};
+use stm32f1xx_hal::{gpio, pwm, stm32};
 
 struct PwmSoundCard<Pwm1, Pwm2> {
     pwm1: Pwm1,
@@ -36,8 +36,18 @@ where
 }
 
 type SoundCard = PwmSoundCard<pwm::Pwm<stm32::TIM2, pwm::C1>, pwm::Pwm<stm32::TIM2, pwm::C2>>;
-static mut SOUND_CARD: Option<SoundCard> = None;
-static mut OSCILLATOR: Option<softsynth::Oscillator> = None;
+
+struct Context {
+    sound_card: SoundCard,
+    oscillator: Oscillator,
+    button0: gpio::gpiob::PB12<gpio::Input<gpio::PullUp>>,
+    button1: gpio::gpiob::PB13<gpio::Input<gpio::PullUp>>,
+    button2: gpio::gpiob::PB14<gpio::Input<gpio::PullUp>>,
+    button3: gpio::gpiob::PB15<gpio::Input<gpio::PullUp>>,
+    button4: gpio::gpioa::PA8<gpio::Input<gpio::PullUp>>,
+    button5: gpio::gpioa::PA9<gpio::Input<gpio::PullUp>>,
+}
+static mut CONTEXT: Option<Context> = None;
 
 #[entry]
 fn main() -> ! {
@@ -72,14 +82,30 @@ fn main() -> ! {
         pwm1: pwm.0,
         pwm2: pwm.1,
     };
-    unsafe {
-        SOUND_CARD = Some(sound_card);
-    }
 
     let mut oscillator = Oscillator::default();
     oscillator.set_freq(440);
+
+    let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
+    let button0 = gpiob.pb12.into_pull_up_input(&mut gpiob.crh);
+    let button1 = gpiob.pb13.into_pull_up_input(&mut gpiob.crh);
+    let button2 = gpiob.pb14.into_pull_up_input(&mut gpiob.crh);
+    let button3 = gpiob.pb15.into_pull_up_input(&mut gpiob.crh);
+    let button4 = gpioa.pa8.into_pull_up_input(&mut gpioa.crh);
+    let button5 = gpioa.pa9.into_pull_up_input(&mut gpioa.crh);
+
+    let context = Context {
+        sound_card,
+        oscillator,
+        button0,
+        button1,
+        button2,
+        button3,
+        button4,
+        button5,
+    };
     unsafe {
-        OSCILLATOR = Some(oscillator);
+        CONTEXT = Some(context);
     }
 
     core.SYST.set_clock_source(SystClkSource::Core);
@@ -94,9 +120,27 @@ fn main() -> ! {
 
 #[exception]
 fn SysTick() {
-    let sound_card = unsafe { SOUND_CARD.as_mut().unwrap() };
-    let oscillator = unsafe { OSCILLATOR.as_mut().unwrap() };
+    let context = unsafe { CONTEXT.as_mut().unwrap() };
 
-    sound_card.set(oscillator.get());
-    oscillator.advance();
+    context.sound_card.set(context.oscillator.get());
+    let base = 523;
+    let overtone = context.button0.is_low() as u32
+        + context.button1.is_low() as u32 * 2
+        + context.button2.is_low() as u32 * 4;
+    let mut freq = overtone * base;
+    let root = 10595;
+    if context.button3.is_low() {
+        freq = freq * 10000 / root;
+        freq = freq * 10000 / root;
+    }
+    if context.button4.is_low() {
+        freq = freq * 10000 / root;
+    }
+    if context.button5.is_low() {
+        freq = freq * 10000 / root;
+        freq = freq * 10000 / root;
+        freq = freq * 10000 / root;
+    }
+    context.oscillator.set_freq(freq as u16);
+    context.oscillator.advance();
 }
