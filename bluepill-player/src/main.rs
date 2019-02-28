@@ -127,20 +127,20 @@ fn SysTick() {
     let overtone = context.button0.is_low() as u32
         + context.button1.is_low() as u32 * 2
         + context.button2.is_low() as u32 * 4;
-    let mut freq = overtone * base;
-    let root = 10595;
-    if context.button3.is_low() {
-        freq = freq * 10000 / root;
-        freq = freq * 10000 / root;
-    }
-    if context.button4.is_low() {
-        freq = freq * 10000 / root;
-    }
-    if context.button5.is_low() {
-        freq = freq * 10000 / root;
-        freq = freq * 10000 / root;
-        freq = freq * 10000 / root;
-    }
+    let freq = overtone * base;
+    let nb_half_pitch = context.button3.is_low() as u32 * 2
+        + context.button4.is_low() as u32
+        + context.button5.is_low() as u32 * 3;
+    let freq = match nb_half_pitch {
+        0 => freq,
+        1 => freq * 9439 / 10000,
+        2 => freq * 8909 / 10000,
+        3 => freq * 8409 / 10000,
+        4 => freq * 7937 / 10000,
+        5 => freq * 7492 / 10000,
+        6 => freq * 7071 / 10000,
+        _ => unreachable!(),
+    };
     context.oscillator.set_freq(freq as u16);
     context.oscillator.advance();
 }
