@@ -1,32 +1,34 @@
 use byteorder::{WriteBytesExt, LE};
-use softsynth::{Action, Oscillator, RATE};
+use softsynth::{Action, Adsr, Oscillator, Sound, MAX_VOL, RATE};
 use std::io::Write;
+
+const VOL: i16 = MAX_VOL / 255 * 100;
 
 struct Event {
     ms: u32,
     chan: usize,
     action: Action,
 }
-static EVENTS: [Event; 12] = [
+static EVENTS: [Event; 13] = [
     Event {
         ms: 0,
         chan: 0,
-        action: Action::Vol(100),
+        action: Action::Vol(VOL),
     },
     Event {
         ms: 0,
         chan: 1,
-        action: Action::Vol(100 / 3),
+        action: Action::Vol(VOL / 3),
     },
     Event {
         ms: 0,
         chan: 2,
-        action: Action::Vol(100 / 5),
+        action: Action::Vol(VOL / 5),
     },
     Event {
         ms: 0,
         chan: 3,
-        action: Action::Vol(100 / 7),
+        action: Action::Vol(VOL / 7),
     },
     Event {
         ms: 0,
@@ -50,32 +52,37 @@ static EVENTS: [Event; 12] = [
     },
     Event {
         ms: 10_000,
-        chan: 0,
+        chan: 3,
         action: Action::Stop,
     },
     Event {
-        ms: 10_000,
-        chan: 1,
-        action: Action::Stop,
-    },
-    Event {
-        ms: 10_000,
+        ms: 12_000,
         chan: 2,
         action: Action::Stop,
     },
     Event {
-        ms: 10_000,
-        chan: 3,
+        ms: 14_000,
+        chan: 1,
+        action: Action::Stop,
+    },
+    Event {
+        ms: 16_000,
+        chan: 0,
+        action: Action::Stop,
+    },
+    Event {
+        ms: 12_000,
+        chan: 0,
         action: Action::Stop,
     },
 ];
 
 fn make(song: &[Event]) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
     let mut oscillators = [
-        Oscillator::default(),
-        Oscillator::default(),
-        Oscillator::default(),
-        Oscillator::default(),
+        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
+        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
+        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
+        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
     ];
     let duration = song.iter().map(|e| e.ms).max().unwrap_or(0);
     let mut events = song.iter();

@@ -5,7 +5,7 @@ extern crate panic_semihosting;
 
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::{entry, exception};
-use softsynth::{Oscillator, RATE};
+use softsynth::{Adsr, Oscillator, Sound, MAX_VOL, RATE};
 use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::{gpio, pwm, stm32};
 
@@ -39,7 +39,7 @@ type SoundCard = PwmSoundCard<pwm::Pwm<stm32::TIM2, pwm::C1>, pwm::Pwm<stm32::TI
 
 struct Context {
     sound_card: SoundCard,
-    oscillator: Oscillator,
+    oscillator: Adsr<Oscillator>,
     button0: gpio::gpiob::PB12<gpio::Input<gpio::PullUp>>,
     button1: gpio::gpiob::PB13<gpio::Input<gpio::PullUp>>,
     button2: gpio::gpiob::PB14<gpio::Input<gpio::PullUp>>,
@@ -83,7 +83,7 @@ fn main() -> ! {
         pwm2: pwm.1,
     };
 
-    let mut oscillator = Oscillator::default();
+    let mut oscillator = Adsr::new(Oscillator::default(), 100, 1000, MAX_VOL / 3 * 2, 2000);
     oscillator.set_freq(440);
 
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);

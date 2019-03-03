@@ -1,90 +1,36 @@
 #![no_std]
 
+mod adsr;
+mod oscillator;
+
+pub use adsr::Adsr;
+pub use oscillator::Oscillator;
+
 pub const RATE: u32 = 48000;
-pub static SIN: [i16; 256] = [
-    0, 804, 1607, 2410, 3211, 4011, 4807, 5601, 6392, 7179, 7961, 8739, 9511, 10278, 11038, 11792,
-    12539, 13278, 14009, 14732, 15446, 16150, 16845, 17530, 18204, 18867, 19519, 20159, 20787,
-    21402, 22004, 22594, 23169, 23731, 24278, 24811, 25329, 25831, 26318, 26789, 27244, 27683,
-    28105, 28510, 28897, 29268, 29621, 29955, 30272, 30571, 30851, 31113, 31356, 31580, 31785,
-    31970, 32137, 32284, 32412, 32520, 32609, 32678, 32727, 32757, 32767, 32757, 32727, 32678,
-    32609, 32520, 32412, 32284, 32137, 31970, 31785, 31580, 31356, 31113, 30851, 30571, 30272,
-    29955, 29621, 29268, 28897, 28510, 28105, 27683, 27244, 26789, 26318, 25831, 25329, 24811,
-    24278, 23731, 23169, 22594, 22004, 21402, 20787, 20159, 19519, 18867, 18204, 17530, 16845,
-    16150, 15446, 14732, 14009, 13278, 12539, 11792, 11038, 10278, 9511, 8739, 7961, 7179, 6392,
-    5601, 4807, 4011, 3211, 2410, 1607, 804, 0, -804, -1607, -2410, -3211, -4011, -4807, -5601,
-    -6392, -7179, -7961, -8739, -9511, -10278, -11038, -11792, -12539, -13278, -14009, -14732,
-    -15446, -16150, -16845, -17530, -18204, -18867, -19519, -20159, -20787, -21402, -22004, -22594,
-    -23169, -23731, -24278, -24811, -25329, -25831, -26318, -26789, -27244, -27683, -28105, -28510,
-    -28897, -29268, -29621, -29955, -30272, -30571, -30851, -31113, -31356, -31580, -31785, -31970,
-    -32137, -32284, -32412, -32520, -32609, -32678, -32727, -32757, -32767, -32757, -32727, -32678,
-    -32609, -32520, -32412, -32284, -32137, -31970, -31785, -31580, -31356, -31113, -30851, -30571,
-    -30272, -29955, -29621, -29268, -28897, -28510, -28105, -27683, -27244, -26789, -26318, -25831,
-    -25329, -24811, -24278, -23731, -23169, -22594, -22004, -21402, -20787, -20159, -19519, -18867,
-    -18204, -17530, -16845, -16150, -15446, -14732, -14009, -13278, -12539, -11792, -11038, -10278,
-    -9511, -8739, -7961, -7179, -6392, -5601, -4807, -4011, -3211, -2410, -1607, -804,
-];
+pub const MAX_VOL: i16 = core::i16::MAX;
 
 pub enum Action {
-    Vol(u8),
+    Vol(i16),
     Start(u16),
     Stop,
 }
 
-pub struct Oscillator {
-    pub sample: &'static [i16; 256],
-    pub vol: u8,
-    freq: u16,
-    step: u8,
-    modulo: u32,
-    cur_idx: u8,
-    cur_mod: u32,
-}
-impl Oscillator {
-    pub fn freq(&self) -> u16 {
-        self.freq
-    }
-    pub fn set_freq(&mut self, freq: u16) {
-        self.freq = freq;
-        self.step = (256 * freq as u32 / RATE) as u8;
-        self.modulo = 256 * freq as u32 % RATE;
-    }
-    pub fn get(&self) -> i16 {
-        let res = self.sample[self.cur_idx as usize] as i32 * self.vol as i32 / 255;
-        (res * self.vol as i32 / 255) as i16
-    }
-    pub fn advance(&mut self) {
-        self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
-        self.cur_mod = self.cur_mod % RATE + self.modulo;
-    }
-    pub fn step(&mut self) -> i16 {
+pub trait Sound {
+    fn set_freq(&mut self, freq: u16);
+    fn get(&self) -> i16;
+    fn advance(&mut self);
+    fn step(&mut self) -> i16 {
         let res = self.get();
         self.advance();
         res
     }
-    pub fn stop(&mut self) {
-        self.step = 0;
-        self.modulo = 0;
-        self.cur_idx = 0;
-        self.cur_mod = 0;
-    }
-    pub fn modify(&mut self, action: &Action) {
+    fn stop(&mut self);
+    fn set_vol(&mut self, vol: i16);
+    fn modify(&mut self, action: &Action) {
         match action {
-            Action::Vol(vol) => self.vol = *vol,
+            Action::Vol(vol) => self.set_vol(*vol),
             Action::Start(freq) => self.set_freq(*freq),
             Action::Stop => self.stop(),
-        }
-    }
-}
-impl Default for Oscillator {
-    fn default() -> Self {
-        Self {
-            sample: &SIN,
-            freq: 0,
-            vol: 255,
-            step: 0,
-            modulo: 0,
-            cur_idx: 0,
-            cur_mod: 0,
         }
     }
 }
