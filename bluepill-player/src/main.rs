@@ -120,6 +120,7 @@ fn main() -> ! {
 
 #[exception]
 fn SysTick() {
+    static mut PREV_FREQ: u16 = 0;
     let context = unsafe { CONTEXT.as_mut().unwrap() };
 
     context.sound_card.set(context.oscillator.get());
@@ -140,7 +141,14 @@ fn SysTick() {
         5 => freq * 7492 / 10000,
         6 => freq * 7071 / 10000,
         _ => unreachable!(),
-    };
-    context.oscillator.set_freq(freq as u16);
+    } as u16;
+    if freq != *PREV_FREQ {
+        if freq == 0 {
+            context.oscillator.stop();
+        } else {
+            context.oscillator.set_freq(freq);
+        }
+        *PREV_FREQ = freq;
+    }
     context.oscillator.advance();
 }
