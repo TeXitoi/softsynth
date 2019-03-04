@@ -118,9 +118,38 @@ fn main() -> ! {
     }
 }
 
+struct Unbouncer {
+    cur: u16,
+    new: u16,
+    nb_changes: u32,
+}
+impl Unbouncer {
+    fn is_change(&mut self, new: u16) -> bool {
+        if new == self.cur {
+            self.nb_changes = 0;
+            false
+        } else if new != self.new {
+            self.new = new;
+            self.nb_changes = 0;
+            false
+        } else if self.nb_changes > RATE * 10 / 1000 {
+            self.cur = new;
+            self.nb_changes = 0;
+            true
+        } else {
+            self.nb_changes += 1;
+            false
+        }
+    }
+}
+
 #[exception]
 fn SysTick() {
-    static mut PREV_FREQ: u16 = 0;
+    static mut UNBOUNCER: Unbouncer = Unbouncer {
+        cur: 0,
+        new: 0,
+        nb_changes: 0,
+    };
     let context = unsafe { CONTEXT.as_mut().unwrap() };
 
     context.sound_card.set(context.oscillator.get());
@@ -142,13 +171,13 @@ fn SysTick() {
         6 => freq * 7071 / 10000,
         _ => unreachable!(),
     } as u16;
-    if freq != *PREV_FREQ {
+
+    if UNBOUNCER.is_change(freq) {
         if freq == 0 {
             context.oscillator.stop();
         } else {
             context.oscillator.set_freq(freq);
         }
-        *PREV_FREQ = freq;
     }
     context.oscillator.advance();
 }
