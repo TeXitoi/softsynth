@@ -1,117 +1,44 @@
 use byteorder::{WriteBytesExt, LE};
-use softsynth::{Action, Adsr, Oscillator, Sound, MAX_VOL, RATE};
+use softsynth::{Adsr, Oscillator, Sound, MAX_VOL, RATE};
 use std::io::Write;
 
-const VOL: i16 = MAX_VOL / 255 * 100;
-
-struct Event {
-    ms: u32,
-    chan: usize,
-    action: Action,
-}
-static EVENTS: [Event; 13] = [
-    Event {
-        ms: 0,
-        chan: 0,
-        action: Action::Vol(VOL),
-    },
-    Event {
-        ms: 0,
-        chan: 1,
-        action: Action::Vol(VOL / 3),
-    },
-    Event {
-        ms: 0,
-        chan: 2,
-        action: Action::Vol(VOL / 5),
-    },
-    Event {
-        ms: 0,
-        chan: 3,
-        action: Action::Vol(VOL / 7),
-    },
-    Event {
-        ms: 0,
-        chan: 0,
-        action: Action::Start(440),
-    },
-    Event {
-        ms: 2000,
-        chan: 1,
-        action: Action::Start(440 * 3),
-    },
-    Event {
-        ms: 4000,
-        chan: 2,
-        action: Action::Start(440 * 5),
-    },
-    Event {
-        ms: 6000,
-        chan: 3,
-        action: Action::Start(440 * 7),
-    },
-    Event {
-        ms: 10_000,
-        chan: 3,
-        action: Action::Stop,
-    },
-    Event {
-        ms: 12_000,
-        chan: 2,
-        action: Action::Stop,
-    },
-    Event {
-        ms: 14_000,
-        chan: 1,
-        action: Action::Stop,
-    },
-    Event {
-        ms: 16_000,
-        chan: 0,
-        action: Action::Stop,
-    },
-    Event {
-        ms: 12_000,
-        chan: 0,
-        action: Action::Stop,
-    },
-];
-
-fn make(song: &[Event]) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
-    let mut oscillators = [
-        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
-        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
-        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
-        Adsr::new(Oscillator::default(), 200, 1000, MAX_VOL / 3, 2000),
-    ];
-    let duration = song.iter().map(|e| e.ms).max().unwrap_or(0);
-    let mut events = song.iter();
+fn make(score: &softsynth::songs::Score) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
+    let mut oscillator = Adsr::new(Oscillator::default(), 10, 20, MAX_VOL / 3 * 2, 5);
+    let duration = score.ms_duration();
+    let mut events = score.events();
     let mut event = events.next();
     let mut ms = 0;
+    let mut next_ms = 0;
+    let mut prev = 0;
     (0..RATE * duration / 1000).map(move |t| {
         if t % (RATE / 1000) == 0 {
             loop {
                 match event {
                     None => break,
-                    Some(e) if e.ms != ms => break,
-                    Some(e) => oscillators[e.chan].modify(&e.action),
+                    Some(_) if next_ms != 0 => break,
+                    Some(e) => {
+                        oscillator.modify(&e.into_action());
+                        next_ms = e.ms_duration();
+                    }
                 }
                 event = events.next();
             }
             ms += 1;
+            next_ms -= 1;
         }
-        let mut res = oscillators.iter_mut().map(|o| o.step() as i32).sum();
-        if res > core::i16::MAX as i32 {
-            res = core::i16::MAX as i32;
-        } else if res < core::i16::MIN as i32 {
-            res = core::i16::MIN as i32;
+        let cur = oscillator.get();
+        if (prev - cur).abs() > 10000 {
+            dbg!(t);
+            dbg!(prev);
+            dbg!(cur);
         }
-        res as i16
+        prev = cur;
+        oscillator.step()
     })
 }
 
 fn main() -> std::io::Result<()> {
-    let v = make(&EVENTS);
+    let v = make(&softsynth::songs::FRERE_JACQUES);
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 

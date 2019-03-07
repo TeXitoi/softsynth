@@ -1,4 +1,4 @@
-use crate::{Sound, MAX_VOL, RATE};
+use crate::{compute_ratio, Sound, MAX_VOL, RATE};
 
 pub struct Adsr<S> {
     sound: S,
@@ -7,15 +7,16 @@ pub struct Adsr<S> {
     sustain: i16,
     release_ms: u32,
     vol: i16,
+    sustain_vol: i16,
     state: AdsrState,
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum AdsrState {
     Stop,
-    Attack(u32),
+    Attack { from_vol: i16, ticks: u32 },
     Decay(u32),
     Sustain,
-    Release(u32),
+    Release { from_vol: i16, ticks: u32 },
 }
 
 fn as_ticks(ms: u32) -> u32 {
@@ -25,25 +26,31 @@ impl<S: Sound> Adsr<S> {
     pub fn new(mut sound: S, attack_ms: u32, decay_ms: u32, sustain: i16, release_ms: u32) -> Self {
         sound.set_vol(0);
         sound.stop();
-        Self {
+        let mut res = Self {
             sound,
             attack_ms,
             decay_ms,
             sustain,
             release_ms,
             vol: MAX_VOL,
+            sustain_vol: 0,
             state: AdsrState::Stop,
-        }
-    }
-    fn sustain_vol(&self) -> i16 {
-        (self.vol as i32 * self.sustain as i32 / MAX_VOL as i32) as i16
+        };
+        res.set_vol(MAX_VOL);
+        res
     }
 }
 
 impl<S: Sound> Sound for Adsr<S> {
+    fn vol(&self) -> i16 {
+        self.vol
+    }
     fn set_freq(&mut self, freq: u16) {
         self.sound.set_freq(freq);
-        self.state = AdsrState::Attack(as_ticks(self.attack_ms))
+        self.state = AdsrState::Attack {
+            from_vol: self.sound.vol(),
+            ticks: as_ticks(self.attack_ms),
+        };
     }
     fn get(&self) -> i16 {
         self.sound.get()
@@ -52,51 +59,51 @@ impl<S: Sound> Sound for Adsr<S> {
         use AdsrState::*;
         match self.state {
             Stop => {}
-            Attack(ticks) => {
-                let total_ticks = as_ticks(self.attack_ms) as i32;
-                let vol = self.vol as i32 * (total_ticks - ticks as i32) / total_ticks;
-                self.sound.set_vol(vol as i16);
+            Attack { from_vol, ticks } => {
+                let vol = compute_ratio(self.vol, from_vol, ticks, as_ticks(self.attack_ms));
+                self.sound.set_vol(vol);
                 self.state = match ticks {
                     0 => Decay(as_ticks(self.decay_ms)),
-                    ticks => Attack(ticks - 1),
+                    ticks => Attack {
+                        from_vol,
+                        ticks: ticks - 1,
+                    },
                 }
             }
             Decay(ticks) => {
-                let total_ticks = as_ticks(self.decay_ms) as i32;
-                let sustain_vol = self.sustain_vol() as i32;
-                let vol =
-                    (self.vol as i32 - sustain_vol) * ticks as i32 / total_ticks + sustain_vol;
-                self.sound.set_vol(vol as i16);
+                let vol = compute_ratio(self.sustain_vol, self.vol, ticks, as_ticks(self.decay_ms));
+                self.sound.set_vol(vol);
                 self.state = match ticks {
-                    0 => {
-                        self.sound.set_vol(sustain_vol as i16);
-                        Sustain
-                    }
+                    0 => Sustain,
                     ticks => Decay(ticks - 1),
                 }
             }
             Sustain => {}
-            Release(ticks) => {
-                let total_ticks = as_ticks(self.release_ms) as i32;
-                let sustain_vol = self.sustain_vol() as i32;
-                let vol = sustain_vol * ticks as i32 / total_ticks;
-                self.sound.set_vol(vol as i16);
+            Release { from_vol, ticks } => {
+                let vol = compute_ratio(0, from_vol, ticks, as_ticks(self.release_ms));
+                self.sound.set_vol(vol);
                 self.state = match ticks {
                     0 => {
-                        self.sound.set_vol(0);
                         self.sound.stop();
                         Stop
                     }
-                    ticks => Release(ticks - 1),
+                    ticks => Release {
+                        from_vol,
+                        ticks: ticks - 1,
+                    },
                 }
             }
         }
         self.sound.advance();
     }
     fn stop(&mut self) {
-        self.state = AdsrState::Release(as_ticks(self.release_ms))
+        self.state = AdsrState::Release {
+            from_vol: self.sound.vol(),
+            ticks: as_ticks(self.release_ms),
+        }
     }
     fn set_vol(&mut self, vol: i16) {
         self.vol = vol;
+        self.sustain_vol = (self.vol as i32 * self.sustain as i32 / MAX_VOL as i32) as i16
     }
 }

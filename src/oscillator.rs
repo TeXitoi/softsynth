@@ -10,6 +10,9 @@ pub struct Oscillator {
     cur_mod: u32,
 }
 impl crate::Sound for Oscillator {
+    fn vol(&self) -> i16 {
+        self.vol
+    }
     fn set_freq(&mut self, freq: u16) {
         self.freq = freq;
         self.step = (256 * freq as u32 / RATE) as u8;
@@ -19,17 +22,12 @@ impl crate::Sound for Oscillator {
         self.vol = vol;
     }
     fn get(&self) -> i16 {
-        let res = self.sample[self.cur_idx as usize] as i32 * self.vol as i32 / MAX_VOL as i32;
+        let res = self.sample[self.cur_idx as usize] as i32;
         (res * self.vol as i32 / MAX_VOL as i32) as i16
     }
     fn advance(&mut self) {
         self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
         self.cur_mod = self.cur_mod % RATE + self.modulo;
-    }
-    fn step(&mut self) -> i16 {
-        let res = self.get();
-        self.advance();
-        res
     }
     fn stop(&mut self) {
         self.step = 0;
