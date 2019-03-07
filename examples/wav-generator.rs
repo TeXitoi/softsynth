@@ -3,7 +3,7 @@ use softsynth::{Adsr, Oscillator, Sound, MAX_VOL, RATE};
 use std::io::Write;
 
 fn make(score: &softsynth::songs::Score) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
-    let mut oscillator = Adsr::new(Oscillator::default(), 10, 20, MAX_VOL / 3 * 2, 5);
+    let mut oscillator = Adsr::new(Oscillator::default(), 10, 300, MAX_VOL / 3 * 2, 10);
     let duration = score.ms_duration();
     let mut events = score.events();
     let mut event = events.next();

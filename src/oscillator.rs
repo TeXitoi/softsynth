@@ -1,4 +1,4 @@
-use crate::{MAX_VOL, RATE};
+use crate::{compute_ratio, MAX_VOL, RATE};
 
 pub struct Oscillator {
     pub sample: &'static [i16; 256],
@@ -22,12 +22,15 @@ impl crate::Sound for Oscillator {
         self.vol = vol;
     }
     fn get(&self) -> i16 {
-        let res = self.sample[self.cur_idx as usize] as i32;
-        (res * self.vol as i32 / MAX_VOL as i32) as i16
+        let before = self.sample[self.cur_idx as usize];
+        let after = self.sample[self.cur_idx.wrapping_add(1) as usize];
+        let res = compute_ratio(before, after, self.cur_mod, RATE);
+        (res as i32 * self.vol as i32 / MAX_VOL as i32) as i16
     }
     fn advance(&mut self) {
-        self.cur_idx = (self.cur_idx as u32 + self.step as u32 + self.cur_mod / RATE) as u8;
-        self.cur_mod = self.cur_mod % RATE + self.modulo;
+        let modulo = self.cur_mod + self.modulo;
+        self.cur_idx = (self.cur_idx as u32 + self.step as u32 + modulo / RATE) as u8;
+        self.cur_mod = modulo % RATE;
     }
     fn stop(&mut self) {
         self.step = 0;
