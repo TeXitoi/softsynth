@@ -9,7 +9,6 @@ fn make(score: &softsynth::songs::Score) -> impl core::iter::ExactSizeIterator<I
     let mut event = events.next();
     let mut ms = 0;
     let mut next_ms = 0;
-    let mut prev = 0;
     (0..RATE * duration / 1000).map(move |t| {
         if t % (RATE / 1000) == 0 {
             loop {
@@ -26,13 +25,6 @@ fn make(score: &softsynth::songs::Score) -> impl core::iter::ExactSizeIterator<I
             ms += 1;
             next_ms -= 1;
         }
-        let cur = oscillator.get();
-        if (prev - cur).abs() > 10000 {
-            dbg!(t);
-            dbg!(prev);
-            dbg!(cur);
-        }
-        prev = cur;
         oscillator.step()
     })
 }
