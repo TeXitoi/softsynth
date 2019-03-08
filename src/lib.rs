@@ -38,6 +38,84 @@ pub trait Sound {
             Action::Stop => self.stop(),
         }
     }
+
+    fn into_player(self, score: &songs::Score) -> Player<Self>
+    where
+        Self: Sized,
+    {
+        let mut events = score.events();
+        Player {
+            sound: self,
+            t: score.ms_duration() * RATE / 1000,
+            event: events.next(),
+            events,
+            next_ms: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Player<S> {
+    sound: S,
+    event: Option<songs::Event>,
+    events: songs::Events,
+    t: u32,
+    next_ms: u32,
+}
+impl<S: Sound> Player<S> {
+    pub fn into_sound(self) -> S {
+        self.sound
+    }
+}
+impl<S: Sound> Iterator for Player<S> {
+    type Item = i16;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.t == 0 {
+            return None;
+        }
+        if self.t % (RATE / 1000) == 0 {
+            loop {
+                match self.event {
+                    None => break,
+                    Some(_) if self.next_ms != 0 => break,
+                    Some(e) => {
+                        self.sound.modify(&e.to_action());
+                        self.next_ms = e.ms_duration();
+                    }
+                }
+                self.event = self.events.next();
+            }
+            self.next_ms -= 1;
+        }
+        self.t -= 1;
+        Some(self.sound.step())
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.t as usize, Some(self.t as usize))
+    }
+}
+impl<S: Sound> core::iter::ExactSizeIterator for Player<S> {}
+
+pub fn mix<I1, I2>(iter1: I1, iter2: I2) -> Mix<I1, I2> {
+    Mix { iter1, iter2 }
+}
+pub struct Mix<I1, I2> {
+    iter1: I1,
+    iter2: I2,
+}
+impl<I1, I2> Iterator for Mix<I1, I2>
+where
+    I1: Iterator<Item = i16>,
+    I2: Iterator<Item = i16>,
+{
+    type Item = i16;
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.iter1.next(), self.iter2.next()) {
+            (None, None) => None,
+            (Some(i), None) | (None, Some(i)) => Some(i),
+            (Some(i1), Some(i2)) => Some(i1.saturating_add(i2)),
+        }
+    }
 }
 
 pub(crate) fn compute_ratio(from: i16, to: i16, num: u32, denom: u32) -> i16 {

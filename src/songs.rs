@@ -68,7 +68,7 @@ impl Event {
             Event::Rest { ms, .. } => ms,
         }
     }
-    pub fn into_action(&self) -> crate::Action {
+    pub fn to_action(&self) -> crate::Action {
         match *self {
             Event::Note { pitch, .. } => Action::Start(pitch),
             Event::Rest { .. } => Action::Stop,

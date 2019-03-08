@@ -1,5 +1,6 @@
 use crate::{compute_ratio, MAX_VOL, RATE};
 
+#[derive(Clone)]
 pub struct Oscillator {
     pub sample: &'static [i16; 256],
     vol: i16,

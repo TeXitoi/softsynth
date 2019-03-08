@@ -1,41 +1,35 @@
 use byteorder::{WriteBytesExt, LE};
-use softsynth::{Adsr, Oscillator, Sound, MAX_VOL, RATE};
+use softsynth::{mix, Adsr, Oscillator, Sound, MAX_VOL, RATE};
 use std::io::Write;
 
-fn make(score: &softsynth::songs::Score) -> impl core::iter::ExactSizeIterator<Item = i16> + '_ {
-    let mut oscillator = Adsr::new(Oscillator::default(), 10, 300, MAX_VOL / 3 * 2, 10);
-    let duration = score.ms_duration();
-    let mut events = score.events();
-    let mut event = events.next();
-    let mut ms = 0;
-    let mut next_ms = 0;
-    (0..RATE * duration / 1000).map(move |t| {
-        if t % (RATE / 1000) == 0 {
-            loop {
-                match event {
-                    None => break,
-                    Some(_) if next_ms != 0 => break,
-                    Some(e) => {
-                        oscillator.modify(&e.into_action());
-                        next_ms = e.ms_duration();
-                    }
-                }
-                event = events.next();
-            }
-            ms += 1;
-            next_ms -= 1;
-        }
-        oscillator.step()
-    })
-}
-
 fn main() -> std::io::Result<()> {
-    let v = make(&softsynth::songs::FRERE_JACQUES);
+    let mut oscillator = Adsr::new(Oscillator::default(), 10, 300, MAX_VOL / 3 * 2, 10);
+    oscillator.set_vol(MAX_VOL / 4);
+    let theme = oscillator.into_player(&softsynth::songs::FRERE_JACQUES);
+    let one_bar = theme.len() / 4;
+    let len = theme.len() * 2 + 3 * one_bar;
+
+    let theme1 = theme.clone().chain(theme.clone());
+    let theme2 = (0..one_bar)
+        .map(|_| 0)
+        .chain(theme.clone())
+        .chain(theme.clone());
+    let theme3 = (0..one_bar * 2)
+        .map(|_| 0)
+        .chain(theme.clone())
+        .chain(theme.clone());
+    let theme4 = (0..one_bar * 3)
+        .map(|_| 0)
+        .chain(theme.clone())
+        .chain(theme.clone());
+
+    let v = mix(mix(theme1, theme2), mix(theme3, theme4));
+
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
     stdout.write_all(b"RIFF")?;
-    stdout.write_u32::<LE>(16 + 8 + 8 + 4 + v.len() as u32 * 2)?;
+    stdout.write_u32::<LE>(16 + 8 + 8 + 4 + len as u32 * 2)?;
     stdout.write_all(b"WAVE")?;
 
     stdout.write_all(b"fmt ")?;
@@ -48,7 +42,7 @@ fn main() -> std::io::Result<()> {
     stdout.write_u16::<LE>(16)?; // bits/sample
 
     stdout.write_all(b"data")?;
-    stdout.write_u32::<LE>(v.len() as u32 * 2)?;
+    stdout.write_u32::<LE>(len as u32 * 2)?;
     for s in v {
         stdout.write_i16::<LE>(s)?;
     }

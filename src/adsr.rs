@@ -1,5 +1,6 @@
 use crate::{compute_ratio, Sound, MAX_VOL, RATE};
 
+#[derive(Debug, Clone)]
 pub struct Adsr<S> {
     sound: S,
     attack_ms: u32,
