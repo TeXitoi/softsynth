@@ -153,7 +153,7 @@ fn SysTick() {
     let context = unsafe { CONTEXT.as_mut().unwrap() };
 
     context.sound_card.set(context.oscillator.get());
-    let base = 523;
+    let base = 262;
     let overtone = context.button0.is_low() as u32
         + context.button1.is_low() as u32 * 2
         + context.button2.is_low() as u32 * 4;
