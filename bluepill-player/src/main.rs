@@ -132,7 +132,7 @@ impl Unbouncer {
             self.new = new;
             self.nb_changes = 0;
             false
-        } else if self.nb_changes > RATE * 20 / 1000 {
+        } else if self.nb_changes > RATE * 50 / 1000 {
             self.cur = new;
             self.nb_changes = 0;
             true
